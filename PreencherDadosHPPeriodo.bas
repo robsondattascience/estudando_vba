@@ -3,76 +3,77 @@ Sub PreencherDadosHPNominalFerias()
     Dim FolderPath As String
     Dim FileExt As String
     Dim Filename As String
-    Dim wbSource As Workbook
+    Dim wbOrigem As Workbook
     Dim wbDestino As Workbook
     Dim wsOrigNominal As Worksheet
     Dim wsOrigFerias As Worksheet
     Dim wsDestNominal As Worksheet
     Dim wsDestFerias As Worksheet
     Dim ultimaLinha As Long
-    Dim linhaDestinoNominal As Long
-    Dim linhaDestinoFerias As Long
 
-    ' Defina o caminho da pasta e a extensão dos arquivos
+    ' Caminho da pasta dos arquivos de destino (alterar conforme necessário)
     FolderPath = "C:\SeuCaminho\Arquivos\"  ' << ALTERE AQUI
     FileExt = "*.xlsm"                      ' << OU "*.xlsx", "*.xls", etc.
 
-    ' Configura a planilha de destino
-    Set wbDestino = ThisWorkbook
-    Set wsDestNominal = wbDestino.Sheets("NOMINAL OP")
-    Set wsDestFerias = wbDestino.Sheets("FÉRIAS")
+    ' O arquivo de dados deve estar aberto antes de rodar o código
+    Set wbOrigem = ActiveWorkbook ' Ou use: Workbooks("NomeDoArquivo.xlsx")
 
-    ' Limpar apenas os dados, preservando cabeçalhos (linha 1)
-    ultimaLinha = wsDestNominal.Cells(wsDestNominal.Rows.Count, "E").End(xlUp).Row
-    If ultimaLinha >= 2 Then
-        wsDestNominal.Range("A2:E" & ultimaLinha).ClearContents
-    End If
-
-    ultimaLinha = wsDestFerias.Cells(wsDestFerias.Rows.Count, "D").End(xlUp).Row
-    If ultimaLinha >= 2 Then
-        wsDestFerias.Range("A2:D" & ultimaLinha).ClearContents
-    End If
+    ' Planilhas de origem
+    Set wsOrigNominal = wbOrigem.Sheets("NOMINAL")
+    Set wsOrigFerias = wbOrigem.Sheets("FERIAS")
 
     Application.ScreenUpdating = False
     Application.DisplayAlerts = False
 
-    ' Inicia busca pelos arquivos
+    ' Loop pelos arquivos da pasta
     Filename = Dir(FolderPath & FileExt)
-
     Do While Filename <> ""
 
-        If Filename <> wbDestino.Name Then
+        ' Evita acidentalmente usar o mesmo arquivo da origem como destino
+        If Filename <> wbOrigem.Name Then
 
-            Set wbSource = Workbooks.Open(FolderPath & Filename)
+            ' Abre o arquivo de destino
+            Set wbDestino = Workbooks.Open(FolderPath & Filename)
 
             On Error Resume Next
-            Set wsOrigNominal = wbSource.Sheets("NOMINAL")
-            Set wsOrigFerias = wbSource.Sheets("FERIAS")
+            Set wsDestNominal = wbDestino.Sheets("NOMINAL OP")
+            Set wsDestFerias = wbDestino.Sheets("FÉRIAS")
             On Error GoTo 0
 
-            ' Copiar dados de NOMINAL
-            If Not wsOrigNominal Is Nothing Then
+            If Not wsDestNominal Is Nothing And Not wsDestFerias Is Nothing Then
+
+                ' Limpa dados antigos (mantendo cabeçalhos)
+                ultimaLinha = wsDestNominal.Cells(wsDestNominal.Rows.Count, "E").End(xlUp).Row
+                If ultimaLinha >= 2 Then
+                    wsDestNominal.Range("A2:E" & ultimaLinha).ClearContents
+                End If
+
+                ultimaLinha = wsDestFerias.Cells(wsDestFerias.Rows.Count, "D").End(xlUp).Row
+                If ultimaLinha >= 2 Then
+                    wsDestFerias.Range("A2:D" & ultimaLinha).ClearContents
+                End If
+
+                ' Copia dados da planilha "NOMINAL"
                 ultimaLinha = wsOrigNominal.Cells(wsOrigNominal.Rows.Count, "E").End(xlUp).Row
                 If ultimaLinha >= 2 Then
-                    linhaDestinoNominal = wsDestNominal.Cells(wsDestNominal.Rows.Count, "A").End(xlUp).Row + 1
-                    If linhaDestinoNominal < 2 Then linhaDestinoNominal = 2
                     wsOrigNominal.Range("A2:E" & ultimaLinha).Copy
-                    wsDestNominal.Range("A" & linhaDestinoNominal).PasteSpecial xlPasteValues
+                    wsDestNominal.Range("A2").PasteSpecial xlPasteValues
                 End If
-            End If
 
-            ' Copiar dados de FERIAS
-            If Not wsOrigFerias Is Nothing Then
+                ' Copia dados da planilha "FERIAS"
                 ultimaLinha = wsOrigFerias.Cells(wsOrigFerias.Rows.Count, "D").End(xlUp).Row
                 If ultimaLinha >= 2 Then
-                    linhaDestinoFerias = wsDestFerias.Cells(wsDestFerias.Rows.Count, "A").End(xlUp).Row + 1
-                    If linhaDestinoFerias < 2 Then linhaDestinoFerias = 2
                     wsOrigFerias.Range("A2:D" & ultimaLinha).Copy
-                    wsDestFerias.Range("A" & linhaDestinoFerias).PasteSpecial xlPasteValues
+                    wsDestFerias.Range("A2").PasteSpecial xlPasteValues
                 End If
-            End If
 
-            wbSource.Close SaveChanges:=False
+                ' Salva e fecha o destino
+                wbDestino.Close SaveChanges:=True
+
+            Else
+                MsgBox "Erro: Sheets 'NOMINAL OP' ou 'FÉRIAS' não encontradas no arquivo " & Filename, vbExclamation
+                wbDestino.Close SaveChanges:=False
+            End If
 
         End If
 
